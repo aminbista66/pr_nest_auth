@@ -5,12 +5,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UserCreateDTO } from './dto/user-create.dto';
 import * as argon from 'argon2';
 import { UserCredsDTO } from './dto/user-credential.dto';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
     private readonly entityManager: EntityManager,
+    private configService: ConfigService,
+    private jwtService: JwtService,
   ) {}
 
   async createUser(requestBody: UserCreateDTO) {
@@ -29,11 +33,35 @@ export class UserService {
     if (!user) {
       throw new ForbiddenException('Invalid username or password');
     }
-    const isPasswordValid = await argon.verify(user.password, requestBody.password);
+    const isPasswordValid = await argon.verify(
+      user.password,
+      requestBody.password,
+    );
     if (!isPasswordValid) {
       throw new ForbiddenException('Invalid username or password');
     }
-    return {message: "you are signed in"};
+    return this.getToken({
+      id: user.id,
+      email: user.email,
+      username: user.username,
+    });
+  }
+
+  async getToken(
+    payload: Object,
+  ): Promise<{ access_token: string; refresh_token: string }> {
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      expiresIn: '1d',
+    });
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      expiresIn: '7d',
+    });
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    };
   }
 
   private BuildResponse(user: User) {
