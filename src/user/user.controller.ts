@@ -28,6 +28,13 @@ export class UserController {
     return this.userService.signin(requestBody);
   }
 
+  @Post('signout')
+  @UseGuards(AuthGuard('jwt'))
+  signout(@Req() request: Request) {
+    const token = request.headers.authorization?.split(' ')[1];
+    return this.userService.signout(token);
+  }
+
   @Post('echo')
   @UseGuards(AuthGuard('jwt'))
   getUser(@Req() req: Request) {

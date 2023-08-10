@@ -47,6 +47,28 @@ export class UserService {
     });
   }
 
+  async signout(token: string) {
+    const payload = await this.jwtService.verify(token, {
+      secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+    });
+    const user_object = {
+      id: payload.id,
+      email: payload.email,
+      username: payload.username,
+    }
+    return {
+      message: 'Successfully signed out',
+      access_token: await this.jwtService.signAsync(user_object, {
+        secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+        expiresIn: '1s',
+      }),
+      refresh_token: await this.jwtService.signAsync(user_object, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        expiresIn: '1s',
+      })
+    }
+  }
+
   async getToken(
     payload: Object,
   ): Promise<{ access_token: string; refresh_token: string }> {

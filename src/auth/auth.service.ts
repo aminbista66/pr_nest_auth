@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
-
+ 
 @Injectable()
 export class AuthService {
   constructor(
@@ -12,13 +12,17 @@ export class AuthService {
   ) {}
 
   async refreshToken(refreshToken: string) {
-    const payload = this.jwtService.verify(refreshToken, {
-      secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-    });
-    return this.userService.getToken({
-        id: payload.id,
-        username: payload.username,
-        email: payload.email,
-    })
+    try {
+      const palyload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+      return this.userService.getToken({
+        userId: palyload.id,
+        email: palyload.email,
+        username: palyload.username,
+      });
+    } catch (error) {
+      throw new ForbiddenException('Invalid token');
+    }
   }
 }
